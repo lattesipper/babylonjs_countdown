@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8"/>
+    <title>Babylon - Getting Started</title>
+    <!--- Link to the last version of BabylonJS --->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <style>
+        html, body {
+            overflow: hidden;
+            width   : 100%;
+            height  : 100%;
+            margin  : 0;
+            padding : 0;
+        }
+
+        #renderCanvas {
+            width   : 100%;
+            height  : 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        var camera;
+        window.addEventListener('DOMContentLoaded', function(){
+            // get the canvas DOM element
+            var canvas = document.getElementById('renderCanvas');
+
+            // load the 3D engine
+            var engine = new BABYLON.Engine(canvas, true);
+
+            // createScene function that creates and return the scene
+            var createScene = function(){
+                // create a basic BJS Scene object
+                var scene = new BABYLON.Scene(engine);
+
+                scene.ambientColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+
+                // create a FreeCamera, and set its position to (x:0, y:5, z:-10)
+                camera = new BABYLON.ArcRotateCamera('', -1.9888314932807582, 1.9468450816232405, 24.980033218889833, BABYLON.Vector3.Zero(), scene);
+                camera.lowerBetaLimit = Math.PI / 2 - 0.5;
+                camera.upperBetaLimit = Math.PI / 2 + 0.5;
+                camera.lowerRadiusLimit = 15;
+                camera.upperRadiusLimit = 50;
+
+                // target the camera to scene origin
+                camera.setTarget(BABYLON.Vector3.Zero());
+
+                // attach the camera to the canvas
+                camera.attachControl(canvas, false);
+
+                // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+                var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 5, -5), scene);
+                // Default intensity is 1. Let's dim the light a small amount
+                light.intensity = 0.7;
+
+                return scene;
+            }
+
+            // call the createScene function
+            var scene = createScene();
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+
+            class TimeDisplay {
+                constructor() {
+                    this.node = new BABYLON.TransformNode('', scene);
+                    // create display
+                    this.display = new Display(13);
+                    this.display.getNode().setParent(this.node);
+                    // load bleed sound
+                    const sndBleep = new BABYLON.Sound("music", "bleep.mp3", scene, null, {
+                        loop: false,
+                        autoplay: false,
+                        spatialSound: true,
+                        volume: 0.2
+                    });
+                    // load box
+                    BABYLON.SceneLoader.ImportMesh("", "./", "box.obj", scene, function (meshes, particleSystems, skeletons) {
+                        const cube = meshes[0];
+                        cube.scaling = new BABYLON.Vector3(5, 5, 5);
+                        const material = new BABYLON.StandardMaterial('', scene);
+                        material.diffuseTexture = new BABYLON.Texture('./woodtexture.jpg', scene);
+                        material.ambientColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                        cube.material = material;
+                    });
+                    // setup tick function
+                    const zpad = (len, char) => {
+                        let retStr = '';
+                        let str = char + '';
+                        for (let i = str.length; i < len; i++) {
+                            retStr += '0';
+                        }
+                        return retStr + str;
+                    };
+                    this.tickTimer = setInterval(() => {
+                        var delta = (new Date(2021, 0, 1, 0, 0, 0, 0) - new Date()) / 1000;
+                        var days = Math.floor(delta / 86400);       delta -= days * 86400;
+                        var hours = Math.floor(delta / 3600) % 24;  delta -= hours * 3600;
+                        var minutes = Math.floor(delta / 60) % 60;  delta -= minutes * 60;
+                        var seconds = delta % 60;
+                        this.display.setString(zpad(3, Math.floor(days))+'d-'+zpad(2, Math.floor(hours))+'-'+zpad(2, Math.floor(minutes))+':'+zpad(2, Math.floor(seconds)));
+                        sndBleep.play();
+                        if (delta <= 0) {
+                            clearInterval(this.tickTimer);
+                            this.explode();
+                        }
+                    }, 1000);
+                }
+                explode() {
+                    const sndActivate = new BABYLON.Sound("music", "activated.mp3", scene, null, {
+                        loop: false,
+                        autoplay: true,
+                        spatialSound: true,
+                        volume: 1.0
+                    });
+                    this.display.setString('000d-00-00:00');
+                }
+                getNode() { return this.node; }
+            }
+
+            class Display {
+                constructor(maxLength) {
+                    this.node = new BABYLON.TransformNode('', scene);
+                    this.maxLength = maxLength;
+                    this.digits = [];
+                    for (let i = 0; i < maxLength; i++) {
+                        const digit = new Digit();
+                        digit.getNode().position = new BABYLON.Vector3((i * 0.75) - ((maxLength - 1) * 0.75 * 0.5), 0, 0);
+                        digit.getNode().setParent(this.node);
+                        this.digits.push(digit);
+                    }
+                }
+                getNode() { return this.node; }
+                setString(str) {
+                    for (let i = 0; i < str.length; i++)
+                        this.digits[i].setChar(str[i]);
+                    for (let i = str.length; i < Math.min(this.maxLength, this.digits.length); i++)
+                        this.digits[i].setChar('');
+                }
+            }
+
+            class Digit {
+                constructor() {
+                    this.node = new BABYLON.TransformNode('', scene);
+                    this.instances = {};
+                    Object.keys(Digit.characterMeshes).forEach((char) => {
+                        let instance = Digit.characterMeshes[char].createInstance('');
+                        this.instances[char] = instance;
+                        instance.isVisible = false;
+                        instance.setParent(this.node);
+                    });
+                }
+                getNode() { return this.node; }
+                setChar(char) {
+                    Object.keys(this.instances).forEach(char => this.instances[char].isVisible = false);
+                    if (char != '') {
+                        this.instances[char].isVisible = true;
+                    }
+                }
+            }
+            {
+                BABYLON.SceneLoader.ImportMesh("", "./", "digits.obj", scene, function (meshes, particleSystems, skeletons) {
+                    var gl = new BABYLON.GlowLayer("glow", scene, { 
+                        mainTextureFixedSize: 256,
+                        blurKernelSize: 64
+                    });
+                    gl.intensity = 0.5;
+                    const glowMaterial = new BABYLON.StandardMaterial('', scene);
+                    glowMaterial.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                    glowMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
+                    const characterMeshes = {};
+                    meshes.forEach(mesh => {
+                        characterMeshes[mesh.name] = mesh; 
+                        mesh.isVisible = false;
+                        mesh.material = glowMaterial;
+                        gl.addIncludedOnlyMesh(mesh)
+                    });
+                    Digit.characterMeshes = characterMeshes;
+
+                    const timeDisplay = new TimeDisplay();
+                    timeDisplay.getNode().position.z = -0.5 * 10 - 0.001;
+                });
+            }
+
+            // run the render loop
+            engine.runRenderLoop(function(){
+                scene.render();
+            });
+
+            // the canvas/window resize event handler
+            window.addEventListener('resize', function(){
+                engine.resize();
+            });
+        });
+    </script>
+</body>
+</html>
