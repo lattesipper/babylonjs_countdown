@@ -67,107 +67,112 @@
             var scene = createScene();
             scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
 
-            const coneHeightRatio = 0.47746482927;
+            const coneHeightRatio = 1.43239448783;
+
+            const raintexture = (() => {
+                let resolution = 1920;
+                let width = resolution;
+                let height = resolution * 1.43239448783;
+                var myDynamicTexture = new BABYLON.DynamicTexture('', {width: width, height: height}, scene);
+                var ctx = myDynamicTexture.getContext();
+                var sampleString = "LADY GAGA IS THE ULTIMATE POP QUEEN ";
+                var chinese = "田由甲申甴电甶男甸甹町画甼甽甾甿畀畁畂畃畄畅畆畇畈畉畊畋界畍畎畏畐畑";
+
+                var font_size = 10;
+                const rainColumns = [];
+                for (let i = 0; i < width/font_size; i++) {
+                    rainColumns.push({
+                        sampleIndex: Math.floor(Math.random() * chinese.length),
+                        sampleString: chinese,
+                        yPos: 0
+                    });
+                }
+
+                //drawing the characters
+                const randRange = (min, max) => Math.floor(min + (max - min + 1) * Math.random());
+                function draw()
+                {
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.font = font_size + "px arial";
+
+                    ctx.fillStyle = `rgb(${randRange(0, 50)}, ${randRange(200, 255)}, ${randRange(0, 50)})`; //green text
+                    rainColumns.forEach((column, idx) => {
+                        const char = column.sampleString.charAt((column.sampleIndex + column.yPos) % column.sampleString.length);
+                        ctx.fillText(char, idx*font_size, column.yPos*font_size);
+                        column.yPos++;
+                    });
+
+                    ctx.fillStyle = `rgb(${150}, ${randRange(255, 255)}, ${150})`; //green text
+                    rainColumns.forEach((column, idx) => {
+                        const char = column.sampleString.charAt((column.sampleIndex + column.yPos) % column.sampleString.length);
+                        ctx.fillText(char, idx*font_size, column.yPos*font_size);
+
+                        if (column.yPos * font_size > height && Math.random() > 0.975) {
+                            column.yPos = 0;
+                            column.sampleIndex = Math.floor(Math.random() * column.sampleString.length);
+                        }
+                    });
+                    myDynamicTexture.update();
+                }
+                setInterval(draw, 100);
+
+                return myDynamicTexture;
+            })();
+
+
             const createMatrixCone = (scale) => {
                 BABYLON.SceneLoader.ImportMesh("", "", "https://raw.githubusercontent.com/lattesipper/babylonjs_countdown/master/backcylinder.obj", scene, function (meshes, particleSystems, skeletons) {
-                    meshes[0].scaling = new BABYLON.Vector3(50 * scale, 50 * scale, 50 * scale);
+                    meshes[0].scaling = new BABYLON.Vector3(scale, 50, scale);
                     meshes[0].visibility = 0.5;
-                                    
-                    let resolution = 1920;
-                    let width = resolution;
-                    let height = resolution * 0.47746482927;
-                    var myDynamicTexture = new BABYLON.DynamicTexture('', {width: width, height: height}, scene);
-                    var ctx = myDynamicTexture.getContext();
+                    meshes[0].rotation.y = Math.random() * Math.PI * 2;
 
 
-                    var material = new BABYLON.StandardMaterial('', scene);
+                    let material = new BABYLON.StandardMaterial('', scene);
+                    material.alphaMode = BABYLON.Engine.ALPHA_ADD;
                     material.disableLighting = true;
                     material.emissiveColor = new BABYLON.Color3(1, 1, 1);
-                    material.diffuseTexture = myDynamicTexture;
+                    material.diffuseTexture = raintexture;
                     meshes[0].material = material;
 
-                    // const existingPlanes = [];
+                    meshes[0].onBeforeRenderObservable.add(() => {
+                        material.diffuseTexture.uScale = scale / 50;
+                        material.diffuseTexture.wrapU = BABYLON.Texture.wrap_addressmode;
+                    });
+                
+                    
 
-                    // for (let i = 0; i < 15; i++) {
-                    //     const planeA = BABYLON.MeshBuilder.CreatePlane('', {size: 50 + Math.random(200)}, scene);
-                    //     while (true) {
-                    //         const angle = Math.random() * Math.PI * 2;
-                    //         const material = new BABYLON.StandardMaterial('', scene);
-                    //         material.diffuseTexture = new BABYLON.Texture('./testimg.jpg', scene);
-                    //         material.ambientColor = new BABYLON.Color3(1, 1, 1);
-                    //         material.disableLighting = true;
-                    //         planeA.position.x = Math.cos(angle) * 75;
-                    //         planeA.position.z = Math.sin(angle) * 75;
-                    //         planeA.rotation.y = (Math.PI / 2) - angle;
-                    //         planeA.position.y = -80 + (Math.random() * 160);
-                    //         planeA.computeWorldMatrix();
-                    //         planeA.material = material;
-                    //         if (!existingPlanes.some(otherPlane => (otherPlane.intersectsMesh(planeA, false))))
-                    //             break;
+                    // if (scale == 1) {
+                    //     const existingPlanes = [];
+                    //     for (let i = 0; i < 15; i++) {
+                    //         const planeA = BABYLON.MeshBuilder.CreatePlane('', {size: 50 + Math.random(200)}, scene);
+                    //         while (true) {
+                    //             const angle = Math.random() * Math.PI * 2;
+                    //             const material = new BABYLON.StandardMaterial('', scene);
+                    //             material.diffuseTexture = new BABYLON.Texture('./testimg.jpg', scene);
+                    //             material.ambientColor = new BABYLON.Color3(1, 1, 1);
+                    //             material.disableLighting = true;
+                    //             const radius = Math.random() * 50 * 6;
+                    //             planeA.position.x = Math.cos(angle) * radius;
+                    //             planeA.position.z = Math.sin(angle) * radius;
+                    //             planeA.rotation.y = (Math.PI / 2) - angle;
+                    //             planeA.position.y = -80 + (Math.random() * 160);
+                    //             planeA.computeWorldMatrix();
+                    //             planeA.material = material;
+                    //             if (!existingPlanes.some(otherPlane => (otherPlane.intersectsMesh(planeA, false))))
+                    //                 break;
+                    //         }
+                    //         existingPlanes.push(planeA);
                     //     }
-                    //     existingPlanes.push(planeA);
                     // }
-
-                    var sampleString = "LADY GAGA IS THE ULTIMATE POP QUEEN ";
-                    var chinese = "田由甲申甴电甶男甸甹町画甼甽甾甿畀畁畂畃畄畅畆畇畈畉畊畋界畍畎畏畐畑";
-
-                    var font_size = 10;
-                    var columns = width/font_size; 
-
-                    //an array of drops - one per column
-                    var drops = [];
-                    var sampleIndexes = [];
-
-                    //x below is the x coordinate
-                    //1 = y co-ordinate of the drop(same for every drop initially)
-                    for(var x = 0; x < columns; x++) {
-                        drops[x] = 1; 
-                        sampleIndexes[x] = Math.floor(Math.random() * sampleString.length);
-                    }
-
-
-                    //drawing the characters
-                    function draw()
-                    {
-                        //Black BG for the canvas
-                        //translucent BG to show trail
-                        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-                        ctx.fillRect(0, 0, width, height);
-                        
-                        ctx.fillStyle = "#0F0"; //green text
-                        ctx.font = font_size + "px arial";
-                        //looping over drops
-                        for(var i = 0; i < drops.length; i++)
-                        {
-                            //a random chinese character to print
-                        var text =
-                            sampleIndexes[i] == -1 ?
-                            chinese.charAt(Math.floor(Math.random() * chinese.length)) :
-                            sampleString.charAt((sampleIndexes[i] + drops[i]) % sampleString.length);
-                            //var text = chinese[Math.floor(Math.random()*chinese.length)];
-                            //x = i*font_size, y = value of drops[i]*font_size
-                            ctx.fillText(text, i*font_size, drops[i]*font_size);
-                            
-                            //sending the drop back to the top randomly after it has crossed the screen
-                            //adding a randomness to the reset to make the drops scattered on the Y axis
-                            if(drops[i]*font_size > height && Math.random() > 0.975) {
-                                drops[i] = 0;
-                                sampleIndexes[i] =   
-                                    (Math.random() > 0.5) ?
-                                    Math.floor(Math.random() * sampleString.length) :
-                                    -1;
-                            }
-                            
-                            //incrementing Y coordinate
-                            drops[i]++;
-                        }
-                        myDynamicTexture.update();
-                    }
-                    setInterval(draw, 100);
                 });
             }
-            createMatrixCone(1);
-            createMatrixCone(2);
+            createMatrixCone(50);
+            createMatrixCone(100);
+            createMatrixCone(200);
+            createMatrixCone(300);
+            createMatrixCone(400);
+            createMatrixCone(500);
             
 
             class TimeDisplay {
